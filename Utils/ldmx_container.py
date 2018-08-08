@@ -1,9 +1,10 @@
 import sys
 import ROOT as r
 from math import sqrt
+from Queue import Queue
 
 # Get the Event library
-r.gSystem.Load("/u/hp/whitbeck//hcal_noise/ldmx-sw/ldmx-sw-install/lib/libEvent.so")
+r.gSystem.Load("/nfs/slac/g/ldmx/users/whitbeck/dos_electrones/ldmx-sw/ldmx-sw-install/lib/libEvent.so")
 
 ######################################################################
 class ldmx_container:
@@ -22,6 +23,7 @@ class ldmx_container:
 
 		self.simParticles=None
 		self.ecalSPHits=None
+		self.hcalSPHits=None
 		self.targetSPHits=None
 		self.hcalDigis=None
 		self.hcalVeto=None
@@ -30,6 +32,7 @@ class ldmx_container:
 		self.ecalVeto=None
 		self.pnWeight=None
 		self.trigger=None
+		self.ecalSimHits=None
 
 		self.collection_type = {}
 		self.collection_type_sec = {}
@@ -37,12 +40,14 @@ class ldmx_container:
 		if fns != '' :
 			self.collection_type={'simParticles':('ldmx::SimParticle','SimParticles_sim'),
 					      'ecalSPHits':('ldmx::SimTrackerHit','EcalScoringPlaneHits_sim'),
+					      'hcalSPHits':('ldmx::SimTrackerHit','HcalScoringPlaneHits_sim'),
 					      'targetSPHits':('ldmx::SimTrackerHit','TargetScoringPlaneHits_sim'),
 					      'recoilHits':('ldmx::SimTrackerHit','RecoilSimHits_sim'),
 					      'findableTracks':('ldmx::FindableTrackResult','FindableTracks_reco'),
 					      'pnWeight':('ldmx::PnWeightResult','PNweight_reco'),
 					      'ecalVeto':('ldmx::EcalVetoResult','EcalVeto_reco'),
 					      'trigger':('ldmx::TriggerResult','Trigger_reco'),
+					      'ecalSimHits':('ldmx::SimCalorimeterHit','EcalSimHits_sim')
 					      }
 
 			self.collection_type_sec={'hcalDigis':('ldmx::HcalHit','hcalDigis_reco'),
@@ -51,6 +56,7 @@ class ldmx_container:
 		else :
 			self.collection_type={'simParticles':('ldmx::SimParticle','SimParticles_sim'),
 					      'ecalSPHits':('ldmx::SimTrackerHit','EcalScoringPlaneHits_sim'),
+					      'hcalSPHits':('ldmx::SimTrackerHit','HcalScoringPlaneHits_sim'),
 					      'targetSPHits':('ldmx::SimTrackerHit','TargetScoringPlaneHits_sim'),
 					      'recoilHits':('ldmx::SimTrackerHit','RecoilSimHits_sim'),
 					      'findableTracks':('ldmx::FindableTrackResult','FindableTracks_reco'),
@@ -61,7 +67,110 @@ class ldmx_container:
 					      'hcalDigis':('ldmx::HcalHit','hcalDigis_reco'),
 					      'hcalVeto':('ldmx::HcalVetoResult','HcalVeto_reco'),
 					      'trigger':('ldmx::TriggerResult','Trigger_reco'),
+					      'ecalSimHits':('ldmx::SimCalorimeterHit','EcalSimHits_sim')
 					      }
+
+	def compute_layer(self,detID) :
+		return (detID>>4)&255
+
+	def get_recoil_electrons_hcalSP_hits(self):
+		eles = self.get_beam_electrons()
+		sp_hits = []
+		for ele in eles : 
+			max_momentum=0.
+			max_SPhit=None
+			for h in self.hcalSPHits : 
+				temp_momentum = sqrt(sum(map(lambda x:x*x,h.getMomentum())))
+				if ele == h.getSimParticle() and max_momentum < temp_momentum : 
+					max_momentum = temp_momentum
+					max_SPhit = h
+			sp_hits.append(max_SPhit)
+		return sp_hits
+
+	def get_brem_hcalSP_hits(self):
+		phos = self.get_primary_brems()
+		sp_hits = []
+		for pho in phos : 
+			max_momentum=0.
+			max_SPhit=None
+			for h in self.hcalSPHits : 
+				temp_momentum = sqrt(sum(map(lambda x:x*x,h.getMomentum())))
+				if pho == h.getSimParticle() and max_momentum < temp_momentum : 
+					max_momentum = temp_momentum
+					max_SPhit = h
+			sp_hits.append(max_SPhit)
+		return sp_hits
+
+	def get_beam_electrons(self):
+		eles=[]
+		for p in self.simParticles : 
+			if p.getGenStatus() == 1 : 
+				eles.append(p)
+		return eles
+
+	def get_primary_brems(self):
+		brems = []
+		eles = self.get_beam_electrons()
+		for ele in eles : 
+			dau_photons = []
+			for idau in xrange(ele.getDaughterCount()):
+				d = ele.getDaughter(idau)
+				if d.getPdgID() == 22 : 
+					dau_photons.append(d)
+			target_dau_photons_energy = map(lambda x : x.getEnergy() if x.getVertex()[2]>-1.2 and x.getVertex()[2]<1.2 else 0.,dau_photons)
+			dau_photons_energy = map(lambda x : x.getEnergy(),dau_photons)
+			dau_photons_vertex = map(lambda x : x.getVertex()[2],dau_photons)
+			#print 'energy:' , dau_photons_energy
+			#print 'vertex:' , dau_photons_vertex
+			#print 'energy (target only):' , target_dau_photons_energy
+			if len(target_dau_photons_energy)==0: 
+				brems.append(None)
+			else : 
+				brems.append(dau_photons[target_dau_photons_energy.index(max(target_dau_photons_energy))])
+
+		return brems
+	def check_ecalSP(self):
+		for h in self.ecalSPHits:
+			pos = h.getPosition()
+			mom = h.getMomentum()
+			print "position"," ".join(map(str,pos))
+			print "momentum"," ".join(map(str,mom))
+
+	def check_photonuclear(self):
+		pn=[]
+		brems = self.get_primary_brems()
+		for p in brems:
+			isPN=False
+			if p != None :
+				for idau in xrange(p.getDaughterCount()) :
+					if p.getDaughter(idau).getProcessType() == 9 : 
+						isPN=True
+			pn.append(isPN)			
+		return pn
+
+	def dump_sim_particles(self,energy_threshold=100.):
+		print "- - - - - - - - new event - - - - - - - - - "
+		for p in self.simParticles : 
+			if p.getGenStatus() == 1 : 
+				offset=""
+				particle_queue = Queue()
+				particle_queue.put(p)
+				visited = []
+				visited.append(p)
+				print "id:",p.getPdgID(),"energy:",p.getEnergy()
+				while not particle_queue.empty():
+					q = particle_queue.get()
+					offset+="-"
+					for idau in xrange(p.getDaughterCount()):
+						d = p.getDaughter(idau)
+						if d.getEnergy() < energy_threshold : continue
+						if not d in visited :
+							particle_queue.put(d)
+							visited.append(d)
+							print offset,"id:",d.getPdgID(),"parent id:",d.getParent(0).getPdgID(),"energy:",d.getEnergy(),"processType:",d.getProcessType()
+				del particle_queue
+				del visited
+
 	def dump(self,coll=''):
 		print '[ldmx_container::dump]'
 		if coll == '' :
