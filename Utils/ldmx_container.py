@@ -70,6 +70,58 @@ class ldmx_container:
 					      'ecalSimHits':('ldmx::SimCalorimeterHit','EcalSimHits_sim')
 					      }
 
+	def shower_vars(self,ele,mol_rad=23):
+		ele_mom = ele.getMomentum()
+		ele_pos = ele.getPosition()
+
+		cylinder_0_1 = [0.]*33
+		cylinder_1_3 = [0.]*33
+		cylinder_3_5 = [0.]*33
+		cylinder_5 = [0.]*33
+		
+		for h in self.ecalSimHits : 
+			layer = self.compute_layer(h.getID())
+			if layer < 0 or layer >= 33 : continue
+			hit_pos = h.getPosition()
+			ray_x_pos = ele_pos[0]+ele_mom[0]/ele_mom[2]*(hit_pos[2]-ele_pos[2]))
+			ray_y_pos = ele_pos[1]+ele_mom[1]/ele_mom[2]*(hit_pos[2]-ele_pos[2]))
+			rel_pos = [hit_pos[0]-ray_x_pos,pos[1]-ray_y_pos,0.]
+			r=sqrt(rel_pos[0]**2+rel_pos[1]**2)
+			
+			if r < mol_rad : 
+				cylinder_0_1[layer]+=hit.getEdep()
+			elif r < 3*mol_rad : 
+				cylinder_1_3[layer]+=hit.getEdep()
+			elif r < 5*mol_rad : 
+				cylinder_3_5[layer]+=hit.getEdep()
+			else : 
+				cylinder_5[layer]+=hit.getEdep()
+		results={'cylinder_0_1_layer_0_0':sum(cylinder[:1]),
+			 'cylinder_0_1_layer_1_2':sum(cylinder[1:3]),
+			 'cylinder_0_1_layer_3_6':sum(cylinder[3:7]),
+			 'cylinder_0_1_layer_7_14':sum(cylinder[7:15]),
+			 'cylinder_0_1_layer_15':sum(cylinder[15:]),
+
+			 'cylinder_1_3_layer_0_0':sum(cylinder[:1]),
+			 'cylinder_1_3_layer_1_2':sum(cylinder[1:3]),
+			 'cylinder_1_3_layer_3_6':sum(cylinder[3:7]),
+			 'cylinder_1_3_layer_7_14':sum(cylinder[7:15]),
+			 'cylinder_1_3_layer_15':sum(cylinder[15:]),
+
+			 'cylinder_3_5_layer_0_0':sum(cylinder[:1]),
+			 'cylinder_3_5_layer_1_2':sum(cylinder[1:3]),
+			 'cylinder_3_5_layer_3_6':sum(cylinder[3:7]),
+			 'cylinder_3_5_layer_7_14':sum(cylinder[7:15]),
+			 'cylinder_3_5_layer_15':sum(cylinder[15:]),
+
+			 'cylinder_5_layer_0_0':sum(cylinder[:1]),
+			 'cylinder_5_layer_1_2':sum(cylinder[1:3]),
+			 'cylinder_5_layer_3_6':sum(cylinder[3:7]),
+			 'cylinder_5_layer_7_14':sum(cylinder[7:15]),
+			 'cylinder_5_layer_15':sum(cylinder[15:])}
+		
+		return results
+
 	def compute_layer(self,detID) :
 		return (detID>>4)&255
 
