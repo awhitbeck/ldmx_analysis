@@ -16,13 +16,13 @@ h_isPN = r.TH2F("isPN",";isPN #gamma_{1} [MeV];isPN #gamma_{2} [MeV]",2,-0.5,1.5
 h_isPN.GetXaxis().SetNdivisions(502)
 h_isPN.GetYaxis().SetNdivisions(502)
 
-h_vertex1 = r.TH2F("vertex1",";x [mm];y [mm]",100,-10,10,100,-20,20)
-h_vertex2 = r.TH2F("vertex2",";x [mm];y [mm]",100,-10,10,100,-20,20)
+h_vertex1 = r.TH2F("vertex1",";x [mm];y [mm]",100,-50,50,100,-50,50)
+h_vertex2 = r.TH2F("vertex2",";x [mm];y [mm]",100,-50,50,100,-50,50)
 h_z1 = r.TH1F("z1",";z [mm]",100,-2,2)
 h_z2 = r.TH1F("z2",";z [mm]",100,-2,2)
-h_dr_vs_ele1_mom = r.TH2F("dr_vs_ele1_energy",";#Delta R [mm];Mom. [MeV]",100,0,50,100,0,3500)
-h_dr_vs_ele2_mom = r.TH2F("dr_vs_ele2_energy",";#Delta R [mm];Mom. [MeV]",100,0,50,100,0,4500)
-h_dr = r.TH1F("dr",";#Delta R [mm];Events",100,0,50)
+h_dr_vs_ele1_mom = r.TH2F("dr_vs_ele1_energy",";#Delta R [mm];Mom. [MeV]",75,0,150,100,0,3500)
+h_dr_vs_ele2_mom = r.TH2F("dr_vs_ele2_energy",";#Delta R [mm];Mom. [MeV]",75,0,150,100,0,4500)
+h_dr = r.TH1F("dr",";#Delta R [mm];Events",75,0,150)
 
 h_brem1_r = r.TH1F("brem1_r",";r_{#gamma,1} [mm];Events",100,0,50)
 h_brem2_r = r.TH1F("brem2_r",";r_{#gamma,2} [mm];Events",100,0,50)
