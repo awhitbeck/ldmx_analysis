@@ -71,6 +71,8 @@ class ldmx_container:
 					      }
 
 	def shower_vars(self,ele,mol_rad=23):
+		if ele == None : 
+			return {}
 		ele_mom = ele.getMomentum()
 		ele_pos = ele.getPosition()
 
@@ -83,42 +85,43 @@ class ldmx_container:
 			layer = self.compute_layer(h.getID())
 			if layer < 0 or layer >= 33 : continue
 			hit_pos = h.getPosition()
-			ray_x_pos = ele_pos[0]+ele_mom[0]/ele_mom[2]*(hit_pos[2]-ele_pos[2]))
-			ray_y_pos = ele_pos[1]+ele_mom[1]/ele_mom[2]*(hit_pos[2]-ele_pos[2]))
-			rel_pos = [hit_pos[0]-ray_x_pos,pos[1]-ray_y_pos,0.]
+			ray_x_pos = ele_pos[0]+ele_mom[0]/ele_mom[2]*(hit_pos[2]-ele_pos[2])
+			ray_y_pos = ele_pos[1]+ele_mom[1]/ele_mom[2]*(hit_pos[2]-ele_pos[2])
+			rel_pos = [hit_pos[0]-ray_x_pos,hit_pos[1]-ray_y_pos,0.]
 			r=sqrt(rel_pos[0]**2+rel_pos[1]**2)
 			
 			if r < mol_rad : 
-				cylinder_0_1[layer]+=hit.getEdep()
+				cylinder_0_1[layer]+=h.getEdep()
 			elif r < 3*mol_rad : 
-				cylinder_1_3[layer]+=hit.getEdep()
+				cylinder_1_3[layer]+=h.getEdep()
 			elif r < 5*mol_rad : 
-				cylinder_3_5[layer]+=hit.getEdep()
+				cylinder_3_5[layer]+=h.getEdep()
 			else : 
-				cylinder_5[layer]+=hit.getEdep()
-		results={'cylinder_0_1_layer_0_0':sum(cylinder[:1]),
-			 'cylinder_0_1_layer_1_2':sum(cylinder[1:3]),
-			 'cylinder_0_1_layer_3_6':sum(cylinder[3:7]),
-			 'cylinder_0_1_layer_7_14':sum(cylinder[7:15]),
-			 'cylinder_0_1_layer_15':sum(cylinder[15:]),
+				cylinder_5[layer]+=h.getEdep()
 
-			 'cylinder_1_3_layer_0_0':sum(cylinder[:1]),
-			 'cylinder_1_3_layer_1_2':sum(cylinder[1:3]),
-			 'cylinder_1_3_layer_3_6':sum(cylinder[3:7]),
-			 'cylinder_1_3_layer_7_14':sum(cylinder[7:15]),
-			 'cylinder_1_3_layer_15':sum(cylinder[15:]),
+		results={'cylinder_0_1_layer_0_0':sum(cylinder_0_1[:1]),
+			 'cylinder_0_1_layer_1_2':sum(cylinder_0_1[1:3]),
+			 'cylinder_0_1_layer_3_6':sum(cylinder_0_1[3:7]),
+			 'cylinder_0_1_layer_7_14':sum(cylinder_0_1[7:15]),
+			 'cylinder_0_1_layer_15':sum(cylinder_0_1[15:]),
 
-			 'cylinder_3_5_layer_0_0':sum(cylinder[:1]),
-			 'cylinder_3_5_layer_1_2':sum(cylinder[1:3]),
-			 'cylinder_3_5_layer_3_6':sum(cylinder[3:7]),
-			 'cylinder_3_5_layer_7_14':sum(cylinder[7:15]),
-			 'cylinder_3_5_layer_15':sum(cylinder[15:]),
+			 'cylinder_1_3_layer_0_0':sum(cylinder_1_3[:1]),
+			 'cylinder_1_3_layer_1_2':sum(cylinder_1_3[1:3]),
+			 'cylinder_1_3_layer_3_6':sum(cylinder_1_3[3:7]),
+			 'cylinder_1_3_layer_7_14':sum(cylinder_1_3[7:15]),
+			 'cylinder_1_3_layer_15':sum(cylinder_1_3[15:]),
 
-			 'cylinder_5_layer_0_0':sum(cylinder[:1]),
-			 'cylinder_5_layer_1_2':sum(cylinder[1:3]),
-			 'cylinder_5_layer_3_6':sum(cylinder[3:7]),
-			 'cylinder_5_layer_7_14':sum(cylinder[7:15]),
-			 'cylinder_5_layer_15':sum(cylinder[15:])}
+			 'cylinder_3_5_layer_0_0':sum(cylinder_3_5[:1]),
+			 'cylinder_3_5_layer_1_2':sum(cylinder_3_5[1:3]),
+			 'cylinder_3_5_layer_3_6':sum(cylinder_3_5[3:7]),
+			 'cylinder_3_5_layer_7_14':sum(cylinder_3_5[7:15]),
+			 'cylinder_3_5_layer_15':sum(cylinder_3_5[15:]),
+
+			 'cylinder_5_layer_0_0':sum(cylinder_5[:1]),
+			 'cylinder_5_layer_1_2':sum(cylinder_5[1:3]),
+			 'cylinder_5_layer_3_6':sum(cylinder_5[3:7]),
+			 'cylinder_5_layer_7_14':sum(cylinder_5[7:15]),
+			 'cylinder_5_layer_15':sum(cylinder_5[15:])}
 		
 		return results
 
@@ -156,7 +159,7 @@ class ldmx_container:
 	def get_beam_electrons(self):
 		eles=[]
 		for p in self.simParticles : 
-			if p.getGenStatus() == 1 : 
+			if p.getGenStatus() == 1 and p.getPdgID()==11: 
 				eles.append(p)
 		return eles
 
