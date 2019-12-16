@@ -2,9 +2,12 @@ import sys
 import ROOT as r
 from math import sqrt
 from Queue import Queue
+from itertools import groupby
+from operator import itemgetter
+import numpy as np
 
 # Get the Event library
-r.gSystem.Load("/nfs/slac/g/ldmx/users/whitbeck/dos_electrones/ldmx-sw/ldmx-sw-install/lib/libEvent.so")
+r.gSystem.Load("/u/hp/whitbeck/trigger_scint/ldmx-sw/ldmx-sw-install/lib/libEvent.so")
 
 ######################################################################
 class ldmx_container:
@@ -22,186 +25,30 @@ class ldmx_container:
                 self.evHeader = r.ldmx.EventHeader()
 
 		self.simParticles=None
-		self.ecalSPHits=None
-		self.hcalSPHits=None
-		self.targetSPHits=None
-		self.hcalDigis=None
-		self.hcalVeto=None
-		self.recoilHits=None
-		self.findableTracks=None
-		self.ecalVeto=None
-		self.pnWeight=None
-		self.trigger=None
-		self.ecalSimHits=None
-
+		self.HcalSimHits=None
 		self.collection_type = {}
 		self.collection_type_sec = {}
 
 		if fns != '' :
 			self.collection_type={'simParticles':('ldmx::SimParticle','SimParticles_sim'),
-					      'ecalSPHits':('ldmx::SimTrackerHit','EcalScoringPlaneHits_sim'),
-					      'hcalSPHits':('ldmx::SimTrackerHit','HcalScoringPlaneHits_sim'),
-					      'targetSPHits':('ldmx::SimTrackerHit','TargetScoringPlaneHits_sim'),
-					      'recoilHits':('ldmx::SimTrackerHit','RecoilSimHits_sim'),
-					      'findableTracks':('ldmx::FindableTrackResult','FindableTracks_reco'),
-					      'pnWeight':('ldmx::PnWeightResult','PNweight_reco'),
-					      'ecalVeto':('ldmx::EcalVetoResult','EcalVeto_reco'),
-					      'trigger':('ldmx::TriggerResult','Trigger_reco'),
-					      'ecalSimHits':('ldmx::SimCalorimeterHit','EcalSimHits_sim')
+					      'HcalSimHits':('ldmx::SimCalorimeterHit','HcalSimHits_sim'),
+					      'TriggerPadUpSimHits':('ldmx::SimCalorimeterHit','TriggerPadUpSimHits_sim'),
+					      'TriggerPadDownSimHits':('ldmx::SimCalorimeterHit','TriggerPadDownSimHits_sim'),
+					      'TriggerPadTaggerSimHits':('ldmx::SimCalorimeterHit','TriggerPadTaggerSimHits_sim'),
+					      'TrigScintScoringPlaneHits':('ldmx::SimTrackerHit','TrigScintScoringPlaneHits_sim')
 					      }
 
-			self.collection_type_sec={'hcalDigis':('ldmx::HcalHit','hcalDigis_reco'),
-						  'hcalVeto':('ldmx::HcalVetoResult','HcalVeto_reco'),
+			self.collection_type_sec={
 						  }
 		else :
 			self.collection_type={'simParticles':('ldmx::SimParticle','SimParticles_sim'),
-					      'ecalSPHits':('ldmx::SimTrackerHit','EcalScoringPlaneHits_sim'),
-					      'hcalSPHits':('ldmx::SimTrackerHit','HcalScoringPlaneHits_sim'),
-					      'targetSPHits':('ldmx::SimTrackerHit','TargetScoringPlaneHits_sim'),
-					      'recoilHits':('ldmx::SimTrackerHit','RecoilSimHits_sim'),
-					      'findableTracks':('ldmx::FindableTrackResult','FindableTracks_reco'),
-					      'pnWeight':('ldmx::PnWeightResult','PNweight_reco'),
-					      'ecalVeto':('ldmx::EcalVetoResult','EcalVeto_reco'),
-					      'pnWeight':('ldmx::PnWeightResult','PNweight_reco'),
-                                              'ecalVeto':('ldmx::EcalVetoResult','EcalVeto_reco'),
-					      'hcalDigis':('ldmx::HcalHit','hcalDigis_reco'),
-					      'hcalVeto':('ldmx::HcalVetoResult','HcalVeto_reco'),
-					      'trigger':('ldmx::TriggerResult','Trigger_reco'),
-					      'ecalSimHits':('ldmx::SimCalorimeterHit','EcalSimHits_sim')
+					      'HcalSimHits':('ldmx::SimCalorimeterHit','HcalSimHits_sim'),
+					      'TriggerPadUpSimHits':('ldmx::SimCalorimeterHit','TriggerPadUpSimHits_sim'),
+					      'TriggerPadDownSimHits':('ldmx::SimCalorimeterHit','TriggerPadDownSimHits_sim'),
+					      'TriggerPadTaggerSimHits':('ldmx::SimCalorimeterHit','TriggerPadTaggerSimHits_sim'),
+					      'TrigScintScoringPlaneHits':('ldmx::SimTrackerHit','TrigScintScoringPlaneHits_sim')
+
 					      }
-
-	def shower_vars(self,ele,mol_rad=23):
-		if ele == None : 
-			return {}
-		ele_mom = ele.getMomentum()
-		ele_pos = ele.getPosition()
-
-		cylinder_0_1 = [0.]*33
-		cylinder_1_3 = [0.]*33
-		cylinder_3_5 = [0.]*33
-		cylinder_5 = [0.]*33
-		
-		for h in self.ecalSimHits : 
-			layer = self.compute_layer(h.getID())
-			if layer < 0 or layer >= 33 : continue
-			hit_pos = h.getPosition()
-			ray_x_pos = ele_pos[0]+ele_mom[0]/ele_mom[2]*(hit_pos[2]-ele_pos[2])
-			ray_y_pos = ele_pos[1]+ele_mom[1]/ele_mom[2]*(hit_pos[2]-ele_pos[2])
-			rel_pos = [hit_pos[0]-ray_x_pos,hit_pos[1]-ray_y_pos,0.]
-			r=sqrt(rel_pos[0]**2+rel_pos[1]**2)
-			
-			if r < mol_rad : 
-				cylinder_0_1[layer]+=h.getEdep()
-			elif r < 3*mol_rad : 
-				cylinder_1_3[layer]+=h.getEdep()
-			elif r < 5*mol_rad : 
-				cylinder_3_5[layer]+=h.getEdep()
-			else : 
-				cylinder_5[layer]+=h.getEdep()
-
-		results={'cylinder_0_1_layer_0_0':sum(cylinder_0_1[:1]),
-			 'cylinder_0_1_layer_1_2':sum(cylinder_0_1[1:3]),
-			 'cylinder_0_1_layer_3_6':sum(cylinder_0_1[3:7]),
-			 'cylinder_0_1_layer_7_14':sum(cylinder_0_1[7:15]),
-			 'cylinder_0_1_layer_15':sum(cylinder_0_1[15:]),
-
-			 'cylinder_1_3_layer_0_0':sum(cylinder_1_3[:1]),
-			 'cylinder_1_3_layer_1_2':sum(cylinder_1_3[1:3]),
-			 'cylinder_1_3_layer_3_6':sum(cylinder_1_3[3:7]),
-			 'cylinder_1_3_layer_7_14':sum(cylinder_1_3[7:15]),
-			 'cylinder_1_3_layer_15':sum(cylinder_1_3[15:]),
-
-			 'cylinder_3_5_layer_0_0':sum(cylinder_3_5[:1]),
-			 'cylinder_3_5_layer_1_2':sum(cylinder_3_5[1:3]),
-			 'cylinder_3_5_layer_3_6':sum(cylinder_3_5[3:7]),
-			 'cylinder_3_5_layer_7_14':sum(cylinder_3_5[7:15]),
-			 'cylinder_3_5_layer_15':sum(cylinder_3_5[15:]),
-
-			 'cylinder_5_layer_0_0':sum(cylinder_5[:1]),
-			 'cylinder_5_layer_1_2':sum(cylinder_5[1:3]),
-			 'cylinder_5_layer_3_6':sum(cylinder_5[3:7]),
-			 'cylinder_5_layer_7_14':sum(cylinder_5[7:15]),
-			 'cylinder_5_layer_15':sum(cylinder_5[15:])}
-		
-		return results
-
-	def compute_layer(self,detID) :
-		return (detID>>4)&255
-
-	def get_recoil_electrons_hcalSP_hits(self):
-		eles = self.get_beam_electrons()
-		sp_hits = []
-		for ele in eles : 
-			max_momentum=0.
-			max_SPhit=None
-			for h in self.hcalSPHits : 
-				temp_momentum = sqrt(sum(map(lambda x:x*x,h.getMomentum())))
-				if ele == h.getSimParticle() and max_momentum < temp_momentum : 
-					max_momentum = temp_momentum
-					max_SPhit = h
-			sp_hits.append(max_SPhit)
-		return sp_hits
-
-	def get_brem_hcalSP_hits(self):
-		phos = self.get_primary_brems()
-		sp_hits = []
-		for pho in phos : 
-			max_momentum=0.
-			max_SPhit=None
-			for h in self.hcalSPHits : 
-				temp_momentum = sqrt(sum(map(lambda x:x*x,h.getMomentum())))
-				if pho == h.getSimParticle() and max_momentum < temp_momentum : 
-					max_momentum = temp_momentum
-					max_SPhit = h
-			sp_hits.append(max_SPhit)
-		return sp_hits
-
-	def get_beam_electrons(self):
-		eles=[]
-		for p in self.simParticles : 
-			if p.getGenStatus() == 1 and p.getPdgID()==11: 
-				eles.append(p)
-		return eles
-
-	def get_primary_brems(self):
-		brems = []
-		eles = self.get_beam_electrons()
-		for ele in eles : 
-			dau_photons = []
-			for idau in xrange(ele.getDaughterCount()):
-				d = ele.getDaughter(idau)
-				if d.getPdgID() == 22 : 
-					dau_photons.append(d)
-			target_dau_photons_energy = map(lambda x : x.getEnergy() if x.getVertex()[2]>-1.2 and x.getVertex()[2]<1.2 else 0.,dau_photons)
-			dau_photons_energy = map(lambda x : x.getEnergy(),dau_photons)
-			dau_photons_vertex = map(lambda x : x.getVertex()[2],dau_photons)
-			#print 'energy:' , dau_photons_energy
-			#print 'vertex:' , dau_photons_vertex
-			#print 'energy (target only):' , target_dau_photons_energy
-			if len(target_dau_photons_energy)==0: 
-				brems.append(None)
-			else : 
-				brems.append(dau_photons[target_dau_photons_energy.index(max(target_dau_photons_energy))])
-
-		return brems
-	def check_ecalSP(self):
-		for h in self.ecalSPHits:
-			pos = h.getPosition()
-			mom = h.getMomentum()
-			print "position"," ".join(map(str,pos))
-			print "momentum"," ".join(map(str,mom))
-
-	def check_photonuclear(self):
-		pn=[]
-		brems = self.get_primary_brems()
-		for p in brems:
-			isPN=False
-			if p != None :
-				for idau in xrange(p.getDaughterCount()) :
-					if p.getDaughter(idau).getProcessType() == 9 : 
-						isPN=True
-			pn.append(isPN)			
-		return pn
 
 	def dump_sim_particles(self,energy_threshold=100.):
 		print "- - - - - - - - new event - - - - - - - - - "
@@ -256,55 +103,86 @@ class ldmx_container:
 		if(self.fns != ''):
 			self.tin_sec.GetEntry(i)
 
-	def getRecoil(self, scoringPlane = "ecalSPHits"):
-		findable_tracks = self.findableTracks
-		findable_dic = {}
-		for findable_track in findable_tracks:
-			#print 'findable?',findable_track.is4sFindable(),findable_track.is3s1aFindable(),findable_track.is2s2aFindable()
-			if findable_track.is4sFindable() or findable_track.is3s1aFindable() or findable_track.is2s2aFindable() : 
-				findable_dic[findable_track.getSimParticle()] = findable_track
+	def beam_electrons(self):
+		electrons={}
+		for p in getattr(self,"simParticles"):
+			if p.getGenStatus()==1 and p.getPdgID() == 11 :
+				electrons[p.getVertex()[1]]=[]
+		return electrons
 
-		if len(findable_dic) != 1 : return [0.,0.,0.]
+	def num_beam_electrons(self):
+		count_particles=0
+		for p in getattr(self,"simParticles"):
+			if p.getGenStatus()==1 and p.getPdgID() == 11 : 
+				count_particles+=1
+		return count_particles
+
+	def trigger_pad_edep(self,coll="TriggerPadUpSimHits"):
+		hits=[0.]*62
+		for x in getattr(self,coll):
+			hit_id = x.getID()>>4
+			hits[hit_id-2]+=x.getEdep()
+		return hits
+
+	def trigger_pad_pe(self,coll="TriggerPadUpSimHits"):
+		hits=[0.]*62
+		for x in getattr(self,coll):
+			hit_id = x.getID()>>4
+			hits[hit_id-2]+=x.getEdep()
+		for i,edep in enumerate(hits) : 
+			hits[i] = np.random.poisson(edep/.4 * 10. + 0.02)
+		return hits
+
+	def scan_trigger_pad_hits(self,coll="TriggerPadUpSimHits"):
+		hits={}
+		hit_ids=[]
+		for x in getattr(self,coll):
+			hit_id = x.getID()>>4
+			if not hit_id in hits : 
+				hits[hit_id]=[0.,0.]
+			for i in range(x.getNumberOfContribs()):
+				if x.getContrib(i).particle.getGenStatus()==1:
+					hits[hit_id][0]+=x.getContrib(i).edep
+				else : 
+					print "hit_id",hit_id,":",x.getContrib(i).particle.getPdgID(),"parent",x.getContrib(i).particle.getParent(0).getPdgID(),x.getContrib(i).particle.getParent(0).getGenStatus()
+					hits[hit_id][1]+=x.getContrib(i).edep
+
+		print hits
+
+	def gen_hits(self,coll="TriggerPadUpSimHits"):
+		electrons=self.beam_electrons()
+		for x in getattr(self,coll):
+			hit_id = x.getID()>>4
+			for i in range(x.getNumberOfContribs()):
+				#print x.getContrib(i).particle.getPdgID(),x.getContrib(i).particle.getGenStatus()
+				#print x.getContrib(i).particle.getVertex()[1]
+				#print "electrons",electrons
+				#if x.getContrib(i).particle in electrons :
+				if x.getContrib(i).particle.getVertex()[1] in electrons:
+					electrons[x.getContrib(i).particle.getVertex()[1]].append(hit_id)
+		return electrons
 		
-		findable_track = findable_dic.itervalues().next()
-		sim_particle = findable_track.getSimParticle()
-		#print 'sim pt',sqrt(sim_particle.getMomentum()[0]**2+sim_particle.getMomentum()[1]**2)
-		p_find = sqrt(sum(map(lambda x: x*x,sim_particle.getMomentum())))
-		pvec=[0.,0.,0.]
-		p_max=0.
-		for hit in getattr(self,scoringPlane):
-			if scoringPlane=="ecalSPHits" and hit.getID()!=26 : continue
-			if scoringPlane=="recoilHits" and hit.getLayerID()!=1 : continue
-			if hit.getSimParticle() != sim_particle : continue
-			mom = sqrt(sum(map(lambda x: x*x,hit.getMomentum())))
-			#print 'hit mom:',mom
-			#print '    pt:',sqrt(hit.getMomentum()[0]**2+hit.getMomentum()[1]**2)
-			if mom > p_max : 
-				p_max = mom
-				pvec = hit.getMomentum()
-			# if ( p_find - sqrt(sum(map(lambda x: x*x,hit.getMomentum()))) ) < min_mom_diff :
-			# 	pvec = hit.getMomentum()
+	def count_clusters(self,coll):
+		count=0
+		hit_pe=self.trigger_pad_pe(coll)
+		for j,pe in enumerate(hit_pe):
+			if j == 0 :
+				if pe>2 : 
+					count+=1            
+			else :
+				if pe>2 and hit_pe[j-1]<=2 and hit_pe[j-2]<=2:
+					count+=1
+		return count
 
-		return pvec
+	def print_sp_hits(self):
+		for x in getattr(self,'TrigScintScoringPlaneHits') :
+			print x.Print()
 
-	def findable_tracks(self):
-		return sum(map(lambda x : x.is4sFindable() or x.is3s1aFindable() or x.is2s2aFindable(),s.findableTracks))
+	def get_num_secondaries(self):
+		count=0
+		for x in getattr(self,'TrigScintScoringPlaneHits') :
+			if x.getEnergy() < 3500. : 
+				count+=1
+		return count
 
-	def recoil_hit_counts(self,res):
-		for ir,r in enumerate(res) : 
-			res[ir]=0
-		#hit_counter=[0]*10
-		for h in self.recoilHits:
-			#hit_counter[h.getLayerID()-1]+=1
-			res[h.getLayerID()-1]+=1
-		#return hit_counter
-
-	def recoil_hit_charges(self,res):
-		for ir,r in enumerate(res) : 
-			res[ir]=0.
-		#hit_charge=[0]*10
-		for h in self.recoilHits:
-			#hit_charge[h.getLayerID()-1]+=h.getEdep()
-			res[h.getLayerID()-1]+=h.getEdep()
-		#return hit_charge
 ######################################################################
