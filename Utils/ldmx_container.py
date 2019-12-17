@@ -7,7 +7,7 @@ from operator import itemgetter
 import numpy as np
 
 # Get the Event library
-r.gSystem.Load("/u/hp/whitbeck/trigger_scint/ldmx-sw/ldmx-sw-install/lib/libEvent.so")
+r.gSystem.Load("~/LDMX/ldmx-sw/ldmx-sw-install/lib/libEvent.so")
 
 ######################################################################
 class ldmx_container:
@@ -103,13 +103,18 @@ class ldmx_container:
 		if(self.fns != ''):
 			self.tin_sec.GetEntry(i)
 
+
+        ## grab all  beam electrons
+        # returns: empty dictionary  (key: x position of vertex)
 	def beam_electrons(self):
 		electrons={}
 		for p in getattr(self,"simParticles"):
 			if p.getGenStatus()==1 and p.getPdgID() == 11 :
 				electrons[p.getVertex()[1]]=[]
 		return electrons
-
+        
+        ## counts the number of beam electrons
+        # returns: integer
 	def num_beam_electrons(self):
 		count_particles=0
 		for p in getattr(self,"simParticles"):
@@ -117,6 +122,20 @@ class ldmx_container:
 				count_particles+=1
 		return count_particles
 
+        ## get number of beam electrons that hit target array
+        def count_true(self,coll):
+                electrons=self.gen_hits(coll)
+                true_electrons=0
+                for e in electrons:
+                        if len(electrons[e])>0:
+                                true_electrons+=1
+                return true_electrons
+
+        
+        ## gets a list of energy deposits in each bars
+        ## NOTE: number of cells is hard coded!
+        # takes: string corresponding to the collection for which hits are deposited in
+        # returns: list of floats
 	def trigger_pad_edep(self,coll="TriggerPadUpSimHits"):
 		hits=[0.]*62
 		for x in getattr(self,coll):
@@ -124,6 +143,10 @@ class ldmx_container:
 			hits[hit_id-2]+=x.getEdep()
 		return hits
 
+        ## gets a list of number of PEs deposited in each cell
+        ## NOTE: number of cells is hard coded!
+        # takes: string corresponding to the collection for which hits are deposited in
+        # returns: lsit of floats
 	def trigger_pad_pe(self,coll="TriggerPadUpSimHits"):
 		hits=[0.]*62
 		for x in getattr(self,coll):
@@ -133,6 +156,7 @@ class ldmx_container:
 			hits[i] = np.random.poisson(edep/.4 * 10. + 0.02)
 		return hits
 
+        
 	def scan_trigger_pad_hits(self,coll="TriggerPadUpSimHits"):
 		hits={}
 		hit_ids=[]
@@ -149,6 +173,9 @@ class ldmx_container:
 
 		print hits
 
+        ## get list of electrons that hit cells in target collection
+        # takes: string refering to name of target collection
+        # return: dictionary of hits for each gen electron
 	def gen_hits(self,coll="TriggerPadUpSimHits"):
 		electrons=self.beam_electrons()
 		for x in getattr(self,coll):
@@ -161,16 +188,25 @@ class ldmx_container:
 				if x.getContrib(i).particle.getVertex()[1] in electrons:
 					electrons[x.getContrib(i).particle.getVertex()[1]].append(hit_id)
 		return electrons
-		
-	def count_clusters(self,coll):
+
+        def count_hits(self,coll,min_pe):
+                pes=self.trigger_pad_pe(coll)
+                pes=map(lambda x: int(x>=min_pe),pes)
+                num=reduce(lambda x,y:x+y,pes)
+                return np.ceil(num/2)
+        
+        ## count the number of zero-suppressed hits within 2 cells of each other
+        # takes: target collection ; minimum number of PE per cell to suppress
+        # return: int, number of clusters
+	def count_clusters(self,coll,min_pe=3):
 		count=0
 		hit_pe=self.trigger_pad_pe(coll)
 		for j,pe in enumerate(hit_pe):
 			if j == 0 :
-				if pe>2 : 
+				if pe>=min_pe : 
 					count+=1            
 			else :
-				if pe>2 and hit_pe[j-1]<=2 and hit_pe[j-2]<=2:
+				if pe>=min_pe and hit_pe[j-1]<min_pe and hit_pe[j-2]<min_pe:
 					count+=1
 		return count
 
