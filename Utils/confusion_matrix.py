@@ -37,7 +37,7 @@ coll="TriggerPadTaggerSimHits" #other options: "TriggerPadUpSimHits", "TriggerPa
 min_pe=3
 
 ## intialize contain to read target input file
-cont = ldmx_container("~/raid/LDMX/trigger_pad_sim/test.root")
+cont = ldmx_container("~whitbeck/raid/LDMX/trigger_pad_sim/test.root")
 cont.setup()
 
 ## initialize histograms
