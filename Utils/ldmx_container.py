@@ -7,7 +7,7 @@ from operator import itemgetter
 import numpy as np
 
 # Get the Event library
-r.gSystem.Load("~/LDMX/ldmx-sw/ldmx-sw-install/lib/libEvent.so")
+r.gSystem.Load("~whitbeck/LDMX/ldmx-sw/ldmx-sw-install/lib/libEvent.so")
 
 ######################################################################
 class ldmx_container:
