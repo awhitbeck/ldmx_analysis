@@ -35,7 +35,10 @@ class ldmx_container:
 					      'TriggerPadUpSimHits':('ldmx::SimCalorimeterHit','TriggerPadUpSimHits_sim'),
 					      'TriggerPadDownSimHits':('ldmx::SimCalorimeterHit','TriggerPadDownSimHits_sim'),
 					      'TriggerPadTaggerSimHits':('ldmx::SimCalorimeterHit','TriggerPadTaggerSimHits_sim'),
-					      'TrigScintScoringPlaneHits':('ldmx::SimTrackerHit','TrigScintScoringPlaneHits_sim')
+					      'TriggerPadScoringPlaneHits':('ldmx::SimTrackerHit','TrigScintScoringPlaneHits_sim'),
+                                              'TriggerPadTaggerDigi':('ldmx::TrigScintHit','trigScintDigisTag_digi'),
+                                              'TriggerPadDownDigi':('ldmx::TrigScintHit','trigScintDigisDn_digi'),
+                                              'TriggerPadUpDigi':('ldmx::TrigScintHit','trigScintDigisUp_digi')
 					      }
 
 			self.collection_type_sec={
@@ -46,8 +49,10 @@ class ldmx_container:
 					      'TriggerPadUpSimHits':('ldmx::SimCalorimeterHit','TriggerPadUpSimHits_sim'),
 					      'TriggerPadDownSimHits':('ldmx::SimCalorimeterHit','TriggerPadDownSimHits_sim'),
 					      'TriggerPadTaggerSimHits':('ldmx::SimCalorimeterHit','TriggerPadTaggerSimHits_sim'),
-					      'TrigScintScoringPlaneHits':('ldmx::SimTrackerHit','TrigScintScoringPlaneHits_sim')
-
+					      'TriggerPadScoringPlaneHits':('ldmx::SimTrackerHit','TrigScintScoringPlaneHits_sim'),
+                                              'TriggerPadTaggerDigi':('ldmx::TrigScintHit','trigScintDigisTag_digi'),
+                                              'TriggerPadDownDigi':('ldmx::TrigScintHit','trigScintDigisDn_digi'),
+                                              'TriggerPadUpDigi':('ldmx::TrigScintHit','trigScintDigisUp_digi')
 					      }
 
 	def dump_sim_particles(self,energy_threshold=100.):
@@ -136,24 +141,22 @@ class ldmx_container:
         ## NOTE: number of cells is hard coded!
         # takes: string corresponding to the collection for which hits are deposited in
         # returns: list of floats
-	def trigger_pad_edep(self,coll="TriggerPadUpSimHits"):
+	def trigger_pad_edep(self,coll="TriggerPadTaggerDigi"):
 		hits=[0.]*62
 		for x in getattr(self,coll):
 			hit_id = x.getID()>>4
-			hits[hit_id-2]+=x.getEdep()
+			hits[hit_id-2]=x.getEnergy()
 		return hits
 
         ## gets a list of number of PEs deposited in each cell
         ## NOTE: number of cells is hard coded!
         # takes: string corresponding to the collection for which hits are deposited in
         # returns: lsit of floats
-	def trigger_pad_pe(self,coll="TriggerPadUpSimHits"):
+	def trigger_pad_pe(self,coll="TriggerPadTaggerDigi"):
 		hits=[0.]*62
 		for x in getattr(self,coll):
 			hit_id = x.getID()>>4
-			hits[hit_id-2]+=x.getEdep()
-		for i,edep in enumerate(hits) : 
-			hits[i] = np.random.poisson(edep/.4 * 10. + 0.02)
+			hits[hit_id-2]=x.getPE()
 		return hits
 
         
@@ -211,12 +214,12 @@ class ldmx_container:
 		return count
 
 	def print_sp_hits(self):
-		for x in getattr(self,'TrigScintScoringPlaneHits') :
+		for x in getattr(self,'TriggerPadScoringPlaneHits') :
 			print x.Print()
 
 	def get_num_secondaries(self):
 		count=0
-		for x in getattr(self,'TrigScintScoringPlaneHits') :
+		for x in getattr(self,'TriggerPadScoringPlaneHits') :
 			if x.getEnergy() < 3500. : 
 				count+=1
 		return count
