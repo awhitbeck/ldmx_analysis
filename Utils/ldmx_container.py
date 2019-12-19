@@ -193,7 +193,7 @@ class ldmx_container:
                 pes=self.trigger_pad_pe(coll)
                 pes=map(lambda x: int(x>=min_pe),pes)
                 num=reduce(lambda x,y:x+y,pes)
-                return np.ceil(num/2)
+                return np.ceil(num/2.)
         
         ## count the number of zero-suppressed hits within 2 cells of each other
         # takes: target collection ; minimum number of PE per cell to suppress
