@@ -32,12 +32,12 @@ def print_hits(electrons, hits):
     print " ".join(output[1::2])
 
 ## set configurable parameters
-debug=True
-coll="TriggerPadTaggerSimHits" #other options: "TriggerPadUpSimHits", "TriggerPadDownSimHits"
+debug=False
+coll="TriggerPadTagger" #other options: "TriggerPadTagger", "TriggerPadTagger"
 min_pe=3
 
 ## intialize contain to read target input file
-cont = ldmx_container("~whitbeck/raid/LDMX/trigger_pad_sim/test.root")
+cont = ldmx_container("~whitbeck/raid/LDMX/trigger_pad_sim/Dec18/trig_scin_digi_mip_respons_10_noise_0p001.root")
 cont.setup()
 
 ## initialize histograms
@@ -47,26 +47,29 @@ hist_true = r.TH1F("true_hist",coll+";True Electrons",8,-0.5,7.5)
 
 for i in range(cont.tin.GetEntries()):
 
+    if i % 5000 == 0 : print i
+    #if i > 5000 : break
+    
     ## initialize container
     cont.getEvent(i)
 
     ## get true number of electrons
-    true_num=cont.count_true(coll)
+    true_num=cont.count_true(coll+"SimHits")
 
     #### ALGORITHM 1: COUNT THE NUMBER HITS IN AN ARRAY
-    count_hits=cont.count_hits(coll,min_pe)
-    count_hits_up=cont.count_hits("TriggerPadUpSimHits",min_pe)
+    count_hits=cont.count_hits(coll+"Digi",min_pe)
+    count_hits_up=cont.count_hits("TriggerPadUpDigi",min_pe)
     #### ALGORITHM 2: COUNT THE NUMBER OF HIT CLUSTERS
-    count_clusters=cont.count_clusters(coll,min_pe)
-    count_clusters_up=cont.count_clusters("TriggerPadUpSimHits",min_pe)
+    count_clusters=cont.count_clusters(coll+"Digi",min_pe)
+    count_clusters_up=cont.count_clusters("TriggerPadUpDigi",min_pe)
 
     #### DEBUGGING INFORMATION --- 
     if debug and true_num == 1 and count_hits == 0 : # and cont.get_num_secondaries() == 0 : 
 
-        hit_energy = cont.trigger_pad_edep(coll)
-        hit_pe = cont.trigger_pad_pe(coll)
-        hit_energy_up = cont.trigger_pad_edep("TriggerPadUpSimHits")
-        hit_pe_up = cont.trigger_pad_pe("TriggerPadUpSimHits")
+        hit_energy = cont.trigger_pad_edep(coll+"Digi")
+        hit_pe = cont.trigger_pad_pe(coll+"Digi")
+        hit_energy_up = cont.trigger_pad_edep("TriggerPadUpDigi")
+        hit_pe_up = cont.trigger_pad_pe("TriggerPadUpDigi")
 
         print "- - - - - - - - - - event: ",i," - - - - - - - - - - - "
         if true_num == count_clusters and true_num != count_hits : 
@@ -78,7 +81,7 @@ for i in range(cont.tin.GetEntries()):
         if true_num != count_clusters and true_num == count_hits : 
             print "\033[94m - - - - - - - - - - (",true_num,":",count_hits,":",count_clusters,":",count_clusters_up,") - - - - - - - - - - - \033[00m"
 
-        gen_hits=cont.gen_hits(coll)
+        gen_hits=cont.gen_hits(coll+"SimHits")
         #print "tagger hits"
         #print gen_hits
         print "photo-electrons:"
@@ -97,8 +100,8 @@ for i in range(cont.tin.GetEntries()):
         cont.print_sp_hits()
 
     ## fill histograms
-    #hist.Fill(true_num,count_clusters) #alternative min(count_clusters,count_clusters_up))
-    hist.Fill(true_num,count_hits) #alternative min(count_clusters,count_clusters_up))
+    hist.Fill(true_num,min(count_clusters,count_clusters_up))
+    #hist.Fill(true_num,count_hits) #alternative min(count_clusters,count_clusters_up))
     hist_true.Fill(true_num)
     second_hist.Fill(true_num-count_clusters,cont.get_num_secondaries())
 
