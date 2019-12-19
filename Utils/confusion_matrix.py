@@ -32,7 +32,7 @@ def print_hits(electrons, hits):
     print " ".join(output[1::2])
 
 ## set configurable parameters
-debug=False
+debug=True
 coll="TriggerPadTaggerSimHits" #other options: "TriggerPadUpSimHits", "TriggerPadDownSimHits"
 min_pe=3
 
@@ -61,7 +61,7 @@ for i in range(cont.tin.GetEntries()):
     count_clusters_up=cont.count_clusters("TriggerPadUpSimHits",min_pe)
 
     #### DEBUGGING INFORMATION --- 
-    if debug and true_num == 2 and count_clusters > 2 and cont.get_num_secondaries() == 0 : 
+    if debug and true_num == 1 and count_hits == 0 : # and cont.get_num_secondaries() == 0 : 
 
         hit_energy = cont.trigger_pad_edep(coll)
         hit_pe = cont.trigger_pad_pe(coll)
@@ -77,32 +77,24 @@ for i in range(cont.tin.GetEntries()):
             print "\033[91m - - - - - - - - - - (",true_num,":",count_hits,":",count_clusters,":",count_clusters_up,") - - - - - - - - - - - \033[00m"
         if true_num != count_clusters and true_num == count_hits : 
             print "\033[94m - - - - - - - - - - (",true_num,":",count_hits,":",count_clusters,":",count_clusters_up,") - - - - - - - - - - - \033[00m"
-        
-        print "tagger hits"
-        print gen_hits
+
+        gen_hits=cont.gen_hits(coll)
+        #print "tagger hits"
+        #print gen_hits
         print "photo-electrons:"
         print_hits(gen_hits,hit_pe)
-        print "gen edep:"
-        print_hits(gen_hits,hit_energy)
+        #print "gen edep:"
+        #print_hits(gen_hits,hit_energy)
 
-        print "up-stream hits"
-        print gen_hits_up
-        print "photo-electrons:"
-        print_hits(gen_hits,hit_pe_up)
-        print "gen edep:"
-        print_hits(gen_hits,hit_energy_up)
+        # print "up-stream hits"
+        # print gen_hits_up
+        # print "photo-electrons:"
+        # print_hits(gen_hits,hit_pe_up)
+        # print "gen edep:"
+        # print_hits(gen_hits,hit_energy_up)
 
         print "scoring plane hits:"
         cont.print_sp_hits()
-
-        if true_num == 1 : 
-            for edep in hit_energy:
-                if edep != 0. : 
-                    hist_edep.Fill(edep)
-            for pe in hit_pe : 
-                if pe != 0 : 
-                    hist_pe.Fill(pe)
-
 
     ## fill histograms
     #hist.Fill(true_num,count_clusters) #alternative min(count_clusters,count_clusters_up))
